@@ -5,89 +5,123 @@ import pandas as pd
 import streamlit as st
 
 st.set_page_config(
-    page_title="Engineering & Market Analytics Suite",
+    page_title="Engineering Mechanics & Market Analytics Suite",
     page_icon="⚙️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom header
-st.title("⚙️ Engineering & Market Analytics Dashboard")
+st.title("⚙️ Engineering Mechanics & Market Intelligence Dashboard")
 st.markdown("Developed by **Ardavan Ghal-Eh** | Sharif University of Technology")
 st.markdown("---")
 
-tab1, tab2 = st.tabs(["🏗️ تحلیل تیر مکانیکی (Beam Deflection Simulator)", "📊 تحلیل داده‌های بازار و قیمت‌ها (Market Intelligence)"])
+tab1, tab2 = st.tabs([
+    "🏗️ تحلیل تنش و خیز تیر مکانیکی (Beam Stress & Deflection)",
+    "📊 هوش تجاری و رصد قیمت‌های بازار (Market Analytics)"
+])
 
 # -------------------------------------------------------------
-# TAB 1: MECHANICAL BEAM DEFLECTION & STRESS
+# TAB 1: MECHANICAL BEAM DEFLECTION, STRESS & SAFETY FACTOR
 # -------------------------------------------------------------
 with tab1:
-    st.header("تحلیل مهندسی: نیروی برشی، گشتاور خمشی و خیز تیر (Euler-Bernoulli Beam)")
-    st.caption("محاسبه تحلیلی پارامتریک برای تیر دو سر ساده تحت بار متمرکز و بار گسترده یکنواخت")
+    st.header("تحلیل استحکام مکانیکی: تنش خمشی، ضریب اطمینان و خیز تیر (Euler-Bernoulli)")
+    st.caption("محاسبه دقیق تنش ماکزیمم و ضریب اطمینان طراحی بر اساس تسلیم مواد مهندسی")
 
     col1, col2 = st.columns([1, 2])
 
     with col1:
-        st.subheader("پارامترهای ورودی تیر")
-        L = st.slider("طول تیر (m)", min_value=1.0, max_value=10.0, value=5.0, step=0.5)
-        P = st.number_input("بار متمرکز P (N)", min_value=0.0, max_value=50000.0, value=5000.0, step=500.0)
-        a = st.slider("موقعیت بار متمرکز a (m)", min_value=0.0, max_value=float(L), value=float(L / 2), step=0.1)
-        w = st.number_input("بار گسترده یکنواخت w (N/m)", min_value=0.0, max_value=10000.0, value=1000.0, step=200.0)
+        st.subheader("۱. ابعاد و بارگذاری تیر")
+        L = st.slider("طول تیر L (متر)", min_value=1.0, max_value=10.0, value=4.0, step=0.5)
+        P = st.number_input("بار متمرکز P (نیوتن)", min_value=0.0, max_value=100000.0, value=8000.0, step=500.0)
+        a = st.slider("موقعیت اعمال بار a (متر)", min_value=0.0, max_value=float(L), value=float(L / 2), step=0.1)
+        w = st.number_input("بار گسترده یکنواخت w (N/m)", min_value=0.0, max_value=20000.0, value=1500.0, step=250.0)
         
-        st.markdown("**مشخصات مقطع و جنس:**")
-        E_gpa = st.number_input("مدول یانگ E (GPa) - فولاد: 200", min_value=10.0, max_value=500.0, value=200.0)
-        I_cm4 = st.number_input("ممان اینرسی I (cm^4)", min_value=10.0, max_value=10000.0, value=300.0)
+        st.subheader("۲. انتخاب پروفیل و جنس مقطع")
+        profile_type = st.selectbox(
+            "نوع مقطع سازه‌ای:",
+            ["تیرآهن IPE 140 (I-Beam)", "قوطی پروفیل مستطیلی 100x60x4", "شافت استوانه‌ای توپر Ø50mm"]
+        )
 
-        E = E_gpa * 1e9
-        I = I_cm4 * 1e-8
+        material_choice = st.selectbox(
+            "جنس متریال مهندسی:",
+            ["فولاد ساختمانی St37 (Sy = 235 MPa)", "فولاد آلیاژی CK45 (Sy = 370 MPa)", "آلومینیوم مهندسی 6061-T6 (Sy = 276 MPa)"]
+        )
+
+        # Profile parameters (SI Units: m, m^4, m)
+        if "IPE 140" in profile_type:
+            I = 5.41e-6       # m^4
+            y_max = 0.070     # m (h/2)
+            desc_profile = "h=140mm, b=73mm"
+        elif "قوطی" in profile_type:
+            I = 1.62e-6       # m^4
+            y_max = 0.050     # m
+            desc_profile = "100x60mm, t=4mm"
+        else: # Round 50mm
+            r = 0.025
+            I = (np.pi * (r**4)) / 4
+            y_max = r
+            desc_profile = "قطر 50 میلی‌متر"
+
+        # Material Yield Strength Sy (Pa) and E (Pa)
+        if "St37" in material_choice:
+            Sy = 235e6
+            E = 205e9
+        elif "CK45" in material_choice:
+            Sy = 370e6
+            E = 210e9
+        else:
+            Sy = 276e6
+            E = 70e9
 
     with col2:
-        # Analytical Beam Calculation
         x = np.linspace(0, L, 500)
         b = L - a
         
-        # Reactions for simply supported beam:
-        # Due to P: R1_p = P*b/L, R2_p = P*a/L
-        # Due to w: R1_w = w*L/2, R2_w = w*L/2
         R1 = (P * b / L) + (w * L / 2)
         R2 = (P * a / L) + (w * L / 2)
 
-        # Shear force V(x) and Moment M(x)
         V = np.zeros_like(x)
         M = np.zeros_like(x)
         deflection = np.zeros_like(x)
 
         for idx, xi in enumerate(x):
-            # Shear force
             v_val = R1 - w * xi
             if xi > a:
                 v_val -= P
             V[idx] = v_val
 
-            # Bending moment
             m_val = R1 * xi - 0.5 * w * (xi ** 2)
             if xi > a:
                 m_val -= P * (xi - a)
             M[idx] = m_val
 
-            # Deflection approx for central load + UDL
             y_w = (w * xi / (24 * E * I)) * (L**3 - 2 * L * (xi**2) + xi**3)
             if xi <= a:
                 y_p = (P * b * xi / (6 * E * I * L)) * (L**2 - b**2 - xi**2)
             else:
                 y_p = (P * a * (L - xi) / (6 * E * I * L)) * (2 * L * xi - xi**2 - a**2)
-            deflection[idx] = -(y_w + y_p) * 1000  # in mm (downward is negative)
+            deflection[idx] = -(y_w + y_p) * 1000  # mm
 
         max_M = np.max(np.abs(M))
         max_delta = np.max(np.abs(deflection))
+        
+        # Max Bending Stress: sigma = (M * y) / I  (in MPa)
+        sigma_max_pa = (max_M * y_max) / I
+        sigma_max_mpa = sigma_max_pa / 1e6
+        sy_mpa = Sy / 1e6
+        safety_factor = sy_mpa / max(1e-6, sigma_max_mpa)
 
-        m1, m2, m3 = st.columns(3)
-        m1.metric("عکس‌العمل تکیه‌گاه چپ (R1)", f"{R1:,.1f} N")
-        m2.metric("حداکثر گشتاور خمشی (|M_max|)", f"{max_M:,.1f} N·m")
-        m3.metric("حداکثر خیز تیر (Max Deflection)", f"{max_delta:.2f} mm")
+        # Metrics display
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("حداکثر لنگر خمشی (|M_max|)", f"{max_M:,.0f} N·m")
+        m2.metric("حداکثر خیز وسط دهانه (δ)", f"{max_delta:.2f} mm")
+        m3.metric("حداکثر تنش خمشی (σ_max)", f"{sigma_max_mpa:.1f} MPa")
+        
+        sf_label = "✅ طراحی ایمن" if safety_factor >= 1.5 else ("⚠️ لب‌مرز" if safety_factor >= 1.0 else "❌ شکست سازه‌ای")
+        m4.metric("ضریب اطمینان (Safety Factor)", f"{safety_factor:.2f}", sf_label)
 
-        # Plotting
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(9, 7), sharex=True)
+        # Plotting diagrams
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(9, 7.5), sharex=True)
         plt.style.use("seaborn-v0_8-whitegrid" if "seaborn-v0_8-whitegrid" in plt.style.available else "default")
 
         ax1.plot(x, V / 1000, color="crimson", lw=2)
@@ -103,7 +137,7 @@ with tab1:
         ax3.plot(x, deflection, color="forestgreen", lw=2)
         ax3.fill_between(x, 0, deflection, alpha=0.15, color="forestgreen")
         ax3.set_ylabel("خیز تیر δ (mm)")
-        ax3.set_xlabel("موقعیت در راستای طول تیر x (m)")
+        ax3.set_xlabel("طول تیر x (متر)")
         ax3.grid(True, linestyle="--", alpha=0.6)
 
         st.pyplot(fig)
@@ -112,55 +146,47 @@ with tab1:
 # TAB 2: MARKET DATA INTELLIGENCE & PRICE ANALYTICS
 # -------------------------------------------------------------
 with tab2:
-    st.header("هوش تجاری و رصد قیمت‌های بازار (E-Commerce Market Analytics)")
-    st.caption("تجزیه و تحلیل داده‌های استخراج‌شده از مارکت‌پلیس‌ها و مقایسه قیمت تأمین‌کنندگان")
+    st.header("هوش تجاری و رصد رقبا (Market Intelligence)")
+    st.caption("پایش قیمت‌ها، وضعیت تخفیف‌ها و ارزیابی اقتصادی کالاهای بازار")
 
-    # Generate or upload dataset
-    uploaded_file = st.file_uploader("بارگذاری فایل داده اکسل یا CSV سفارشی (اختیاری):", type=["xlsx", "csv"])
+    uploaded_file = st.file_uploader("بارگذاری فایل اکسل یا CSV داده‌های بازار:", type=["xlsx", "csv"])
 
     if uploaded_file is not None:
         try:
             df = pd.read_excel(uploaded_file) if uploaded_file.name.endswith(".xlsx") else pd.read_csv(uploaded_file)
-            st.success(f"فایل با موفقیت بارگذاری شد ({len(df)} ردیف).")
+            st.success(f"فایل با موفقیت بارگذاری شد ({len(df):,} ردیف).")
         except Exception as e:
             st.error(f"خطا در خواندن فایل: {e}")
             df = None
     else:
-        # Built-in synthetic market sample
         sample_records = [
-            {"عنوان کالا": "لپ‌تاپ ایسوس Vivobook 15", "دسته‌بندی": "لپ‌تاپ", "قیمت (تومان)": 38500000, "تخفیف (%)": 10, "فروشنده": "دیجی‌کالا", "امتیاز": 4.6},
-            {"عنوان کالا": "مک‌بوک ایر اپل M2", "دسته‌بندی": "لپ‌تاپ", "قیمت (تومان)": 89000000, "تخفیف (%)": 5, "فروشنده": "تأمین‌کننده پایتخت", "امتیاز": 4.9},
-            {"عنوان کالا": "گوشی سامسونگ S24 Ultra", "دسته‌بندی": "موبایل", "قیمت (تومان)": 72000000, "تخفیف (%)": 12, "فروشنده": "دیجی‌لند", "امتیاز": 4.8},
-            {"عنوان کالا": "مانیتور گیمینگ 27 اینچ شیائومی", "دسته‌بندی": "مانیتور", "قیمت (تومان)": 14200000, "تخفیف (%)": 15, "فروشنده": "دیجی‌کالا", "امتیاز": 4.4},
-            {"عنوان کالا": "هدفون بی‌سیم سونی WH-1000XM5", "دسته‌بندی": "صوتی", "قیمت (تومان)": 19500000, "تخفیف (%)": 8, "فروشنده": "فروشگاه مرکزی", "امتیاز": 4.7},
-            {"عنوان کالا": "اس‌اس‌دی 1 ترابایت سامسونگ T7", "دسته‌بندی": "ذخیره‌سازی", "قیمت (تومان)": 6800000, "تخفیف (%)": 0, "فروشنده": "دیجی‌کالا", "امتیاز": 4.5},
-            {"عنوان کالا": "ماوس لاجیتک MX Master 3S", "دسته‌بندی": "لوازم جانبی", "قیمت (تومان)": 6200000, "تخفیف (%)": 20, "فروشنده": "بازرگانی پارس تک", "امتیاز": 4.9},
-            {"عنوان کالا": "کیبورد مکانیکی تسکو GK-8128", "دسته‌بندی": "لوازم جانبی", "قیمت (تومان)": 2800000, "تخفیف (%)": 10, "فروشنده": "دیجی‌کالا", "امتیاز": 4.2}
+            {"عنوان کالا": "لپ‌تاپ ایسوس Vivobook 15", "دسته‌بندی": "لپ‌تاپ", "قیمت (تومان)": 38500000, "تخفیف (%)": 10, "فروشنده": "دیجی‌کالا", "ارزش خرید": "🔥 عالی"},
+            {"عنوان کالا": "مک‌بوک ایر اپل M2", "دسته‌بندی": "لپ‌تاپ", "قیمت (تومان)": 89000000, "تخفیف (%)": 5, "فروشنده": "تأمین‌کننده پایتخت", "ارزش خرید": "⚖️ منصفانه"},
+            {"عنوان کالا": "گوشی سامسونگ S24 Ultra", "دسته‌بندی": "موبایل", "قیمت (تومان)": 72000000, "تخفیف (%)": 15, "فروشنده": "دیجی‌لند", "ارزش خرید": "🔥 عالی"},
+            {"عنوان کالا": "مانیتور 27 اینچ شیائومی 165Hz", "دسته‌بندی": "مانیتور", "قیمت (تومان)": 14200000, "تخفیف (%)": 18, "فروشنده": "دیجی‌کالا", "ارزش خرید": "🔥 عالی"},
+            {"عنوان کالا": "هدفون بی‌سیم سونی WH-1000XM5", "دسته‌بندی": "صوتی", "قیمت (تومان)": 19500000, "تخفیف (%)": 8, "فروشنده": "فروشگاه مرکزی", "ارزش خرید": "⚖️ منصفانه"},
+            {"عنوان کالا": "ماوس لاجیتک MX Master 3S", "دسته‌بندی": "لوازم جانبی", "قیمت (تومان)": 6200000, "تخفیف (%)": 20, "فروشنده": "بازرگانی پارس", "ارزش خرید": "🔥 عالی"}
         ]
         df = pd.DataFrame(sample_records)
 
     if df is not None and not df.empty:
-        # High level metrics
-        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+        col_m1, col_m2, col_m3 = st.columns(3)
         price_col = [c for c in df.columns if "قیمت" in c or "price" in c.lower()]
         
         if price_col:
             p_name = price_col[0]
             col_m1.metric("تعداد محصولات مانیتور شده", f"{len(df)} قلم")
             col_m2.metric("میانگین قیمت بازار", f"{df[p_name].mean():,.0f} تومان")
-            col_m3.metric("کمترین قیمت", f"{df[p_name].min():,.0f} تومان")
-            col_m4.metric("بیشترین قیمت", f"{df[p_name].max():,.0f} تومان")
+            col_m3.metric("بیشترین تخفیف فعال", f"{df['تخفیف (%)'].max()}%" if 'تخفیف (%)' in df else "N/A")
 
-        st.subheader("جدول جامع اقلام استخراج شده")
         st.dataframe(df, use_container_width=True)
 
-        # Download button
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-            df.to_excel(writer, index=False, sheet_name="Data")
+            df.to_excel(writer, index=False, sheet_name="Cleaned_Data")
         st.download_button(
-            label="📥 دانلود فایل اکسل تمیزشده",
+            label="📥 دانلود فایل اکسل پردازش‌شده",
             data=buffer.getvalue(),
-            file_name="market_cleaned_data.xlsx",
+            file_name="market_intelligence_report.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
