@@ -35,7 +35,7 @@ with tab1:
         P = st.number_input("بار متمرکز P (نیوتن)", min_value=0.0, max_value=100000.0, value=8000.0, step=500.0)
         a = st.slider("موقعیت اعمال بار a (متر)", min_value=0.0, max_value=float(L), value=float(L / 2), step=0.1)
         w = st.number_input("بار گسترده یکنواخت w (N/m)", min_value=0.0, max_value=20000.0, value=1500.0, step=250.0)
-        
+
         st.subheader("۲. انتخاب پروفیل و جنس مقطع")
         profile_type = st.selectbox(
             "نوع مقطع سازه‌ای:",
@@ -76,7 +76,7 @@ with tab1:
     with col2:
         x = np.linspace(0, L, 500)
         b = L - a
-        
+
         R1 = (P * b / L) + (w * L / 2)
         R2 = (P * a / L) + (w * L / 2)
 
@@ -104,7 +104,7 @@ with tab1:
 
         max_M = np.max(np.abs(M))
         max_delta = np.max(np.abs(deflection))
-        
+
         # Max Bending Stress: sigma = (M * y) / I  (in MPa)
         sigma_max_pa = (max_M * y_max) / I
         sigma_max_mpa = sigma_max_pa / 1e6
@@ -116,7 +116,7 @@ with tab1:
         m1.metric("حداکثر لنگر خمشی (|M_max|)", f"{max_M:,.0f} N·m")
         m2.metric("حداکثر خیز وسط دهانه (δ)", f"{max_delta:.2f} mm")
         m3.metric("حداکثر تنش خمشی (σ_max)", f"{sigma_max_mpa:.1f} MPa")
-        
+
         sf_label = "✅ طراحی ایمن" if safety_factor >= 1.5 else ("⚠️ لب‌مرز" if safety_factor >= 1.0 else "❌ شکست سازه‌ای")
         m4.metric("ضریب اطمینان (Safety Factor)", f"{safety_factor:.2f}", sf_label)
 
@@ -172,7 +172,7 @@ with tab2:
     if df is not None and not df.empty:
         col_m1, col_m2, col_m3 = st.columns(3)
         price_col = [c for c in df.columns if "قیمت" in c or "price" in c.lower()]
-        
+
         if price_col:
             p_name = price_col[0]
             col_m1.metric("تعداد محصولات مانیتور شده", f"{len(df)} قلم")
