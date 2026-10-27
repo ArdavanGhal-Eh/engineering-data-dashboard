@@ -13,3 +13,6 @@ venv/
 target/
 *.png
 *.xlsx
+
+# Nightly Hardened Hygiene Rules
+*.key
